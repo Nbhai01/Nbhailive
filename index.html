@@ -1,0 +1,99 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Mic to Earphones (Noise Cancellation)</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4CAF50">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+      background: linear-gradient(to right, #83a4d4, #b6fbff);
+    }
+    button, input[type="range"] {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: none;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+    button:hover {
+      transform: scale(1.05);
+      background-color: #5fcf65;
+    }
+    .controls {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Live Mic to Earphones (Noise Cancellation)</h1>
+  <button id="startBtn">Start Listening</button>  <div class="controls" style="display:none;" id="controls">
+    <div>
+      <label for="volumeControl">Volume:</label><br>
+      <input type="range" id="volumeControl" min="0" max="2" step="0.01" value="1">
+    </div>
+    <div style="margin-top:20px;">
+      <label for="gainControl">Mic Sensitivity (Boost Low Sounds):</label><br>
+      <input type="range" id="gainControl" min="1" max="10" step="0.1" value="1">
+    </div>
+  </div>  <script>
+    let audioContext, micStream, gainNode, volumeNode;
+
+    document.getElementById('startBtn').onclick = async () => {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            highpassFilter: true
+          }
+        });
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const micSource = audioContext.createMediaStreamSource(micStream);
+
+        const biquadFilter = audioContext.createBiquadFilter();
+        biquadFilter.type = "highpass";
+        biquadFilter.frequency.value = 150;
+
+        gainNode = audioContext.createGain();
+        volumeNode = audioContext.createGain();
+
+        micSource.connect(biquadFilter);
+        biquadFilter.connect(gainNode);
+        gainNode.connect(volumeNode);
+        volumeNode.connect(audioContext.destination);
+
+        document.getElementById('controls').style.display = 'block';
+
+        document.getElementById('volumeControl').oninput = (e) => {
+          volumeNode.gain.value = e.target.value;
+        };
+
+        document.getElementById('gainControl').oninput = (e) => {
+          gainNode.gain.value = e.target.value;
+        };
+
+      } catch (err) {
+        console.error('Error accessing microphone:', err);
+        alert('Mic access dena zaroori hai!');
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('service-worker.js').then(function(registration) {
+          console.log('Service Worker registered with scope:', registration.scope);
+        }, function(err) {
+          console.log('Service Worker registration failed:', err);
+        });
+      });
+    }
+  </script></body>
+</html>
