@@ -1,7 +1,8 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Live Mic to Earphones (Noise Cancellation)</title>
+  <title>Live Mic to Earphones</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#4CAF50">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,18 +32,22 @@
   </style>
 </head>
 <body>
-  <h1>Live Mic to Earphones (Noise Cancellation)</h1>
-  <button id="startBtn">Start Listening</button>  <div class="controls" style="display:none;" id="controls">
+  <h1>Live Mic to Earphones (PWA)</h1>
+  <button id="startBtn">Start Listening</button>
+
+  <div class="controls" style="display:none;" id="controls">
     <div>
       <label for="volumeControl">Volume:</label><br>
       <input type="range" id="volumeControl" min="0" max="2" step="0.01" value="1">
     </div>
     <div style="margin-top:20px;">
       <label for="gainControl">Mic Sensitivity (Boost Low Sounds):</label><br>
-      <input type="range" id="gainControl" min="1" max="10" step="0.1" value="1">
+      <input type="range" id="gainControl" min="1" max="10" step="0.1" value="5">
     </div>
-  </div>  <script>
-    let audioContext, micStream, gainNode, volumeNode;
+  </div>
+
+  <script>
+    let audioContext, micStream, gainNode, volumeNode, compressor;
 
     document.getElementById('startBtn').onclick = async () => {
       try {
@@ -50,24 +55,28 @@
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-            autoGainControl: true,
-            highpassFilter: true
+            autoGainControl: false
           }
         });
 
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const micSource = audioContext.createMediaStreamSource(micStream);
 
-        const biquadFilter = audioContext.createBiquadFilter();
-        biquadFilter.type = "highpass";
-        biquadFilter.frequency.value = 150;
-
         gainNode = audioContext.createGain();
+        gainNode.gain.value = 5;
+
         volumeNode = audioContext.createGain();
 
-        micSource.connect(biquadFilter);
-        biquadFilter.connect(gainNode);
-        gainNode.connect(volumeNode);
+        compressor = audioContext.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-50, audioContext.currentTime);
+        compressor.knee.setValueAtTime(40, audioContext.currentTime);
+        compressor.ratio.setValueAtTime(12, audioContext.currentTime);
+        compressor.attack.setValueAtTime(0, audioContext.currentTime);
+        compressor.release.setValueAtTime(0.25, audioContext.currentTime);
+
+        micSource.connect(gainNode);
+        gainNode.connect(compressor);
+        compressor.connect(volumeNode);
         volumeNode.connect(audioContext.destination);
 
         document.getElementById('controls').style.display = 'block';
@@ -95,5 +104,6 @@
         });
       });
     }
-  </script></body>
+  </script>
+</body>
 </html>
